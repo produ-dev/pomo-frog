@@ -10,10 +10,35 @@
     font-family: Arial, sans-serif;
     display: flex; justify-content: center; align-items: center;
     min-height: 100vh; margin: 0; padding: 0;
+    padding-top: 32px;
     background: linear-gradient(135deg, #0b1a07 0%, #1a0e03 60%, #0d0800 100%);
     color: #e8d5a0;
     transition: padding 0.4s ease, align-items 0.4s ease;
   }
+
+  /* ── Custom title bar ── */
+  .titlebar {
+    position: fixed; top: 0; left: 0; right: 0; height: 32px;
+    display: flex; align-items: center;
+    padding: 0 0 0 12px;
+    background: rgba(6, 14, 3, 0.97);
+    border-bottom: 1px solid rgba(160, 105, 30, 0.25);
+    -webkit-app-region: drag;
+    z-index: 9999;
+  }
+  .titlebar-title {
+    font-size: 0.82rem; color: #b8924a; opacity: 0.8; letter-spacing: 0.5px;
+    pointer-events: none; user-select: none;
+  }
+  .titlebar-btns { display: flex; margin-left: auto; -webkit-app-region: no-drag; }
+  .titlebar-btn {
+    width: 46px; height: 32px; border: none; background: transparent;
+    color: #c8a060; font-size: 0.75rem; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s;
+  }
+  .titlebar-btn:hover { background: rgba(160, 105, 30, 0.25); }
+  .titlebar-btn.close-btn:hover { background: rgba(196, 43, 28, 0.75); color: #fff; }
   body.settings-open {
     align-items: flex-start;
     padding: 2rem 1rem;
@@ -138,14 +163,53 @@
   ::-webkit-scrollbar-track { background: rgba(5, 15, 3, 0.5); border-radius: 3px; }
   ::-webkit-scrollbar-thumb { background: rgba(160, 105, 30, 0.5); border-radius: 3px; }
   ::-webkit-scrollbar-thumb:hover { background: rgba(200, 140, 45, 0.75); }
+
+  /* ── Compact mode ── */
+  .compact-bar { display: none; flex-direction: column; align-items: center; gap: 0.3rem; width: 100%; }
+  .compact-timer {
+    font-size: 1.75rem; font-weight: bold;
+    font-variant-numeric: tabular-nums; letter-spacing: 2px;
+    color: #f0e0b0;
+    text-shadow: 0 0 14px rgba(200,145,40,0.85), 0 2px 8px rgba(0,0,0,0.7);
+  }
+  .compact-controls { display: flex; gap: 0.35rem; justify-content: center; }
+  .compact-controls .btn { padding: 0.25rem 0.65rem; font-size: 0.8rem; }
+
+  body.compact { padding-top: 32px; padding-left: 0.3rem; padding-right: 0.3rem; padding-bottom: 0.3rem; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
+  body.compact .container { width: 100%; padding: 0.3rem 0.6rem; border-radius: 10px; }
+  body.compact .compact-bar { display: flex; }
+  body.compact h1,
+  body.compact .ring-wrap,
+  body.compact .controls,
+  body.compact .mode-switch,
+  body.compact .bottom-row,
+  body.compact #dismissBtn,
+  body.compact .settings { display: none !important; }
+  body.compact .titlebar-title,
+  body.compact #minimizeBtn { display: none !important; }
 </style>
 </head>
 <body>
+<div class="titlebar">
+  <span class="titlebar-title">PomoFrog</span>
+  <div class="titlebar-btns">
+    <button class="titlebar-btn" id="minimizeBtn" title="Minimize">&#x2012;</button>
+    <button class="titlebar-btn close-btn" id="closeBtn" title="Close">&#x2715;</button>
+  </div>
+</div>
 <div class="container">
   <h1>PomoFrog</h1>
   <div class="ring-wrap">
     <canvas id="ringCanvas" width="260" height="260"></canvas>
     <div class="timer" id="timerEl">25:00</div>
+  </div>
+  <div class="compact-bar" id="compactBar">
+    <div class="compact-timer" id="compactTimerEl">25:00</div>
+    <div class="compact-controls">
+      <button class="btn" id="compactStartStop" style="background:rgba(184,115,51,0.88);color:#1a0d00;font-weight:bold;">Start</button>
+      <button class="btn" id="compactReset">Reset</button>
+      <button class="btn" id="unpinBtn" title="Exit compact mode">⊟</button>
+    </div>
   </div>
   <div class="controls">
     <button class="btn" id="startStopBtn" style="background:rgba(184,115,51,0.88);color:#1a0d00;font-weight:bold;">Start</button>
@@ -156,6 +220,7 @@
     <button id="breakBtn">Break</button>
   </div>
   <div class="bottom-row">
+    <button class="btn" id="pinBtn" title="Keep on top">⊞</button>
     <button class="btn" id="settingsBtn">⚙️ Settings</button>
   </div>
   <button id="dismissBtn">🔕 Dismiss Alarm</button>
@@ -204,13 +269,20 @@
   const breakMinIn    = document.getElementById('breakMin');
   const applyBtn      = document.getElementById('applyBtn');
   const cancelBtn     = document.getElementById('cancelBtn');
+  const minimizeBtn   = document.getElementById('minimizeBtn');
+  const closeBtn      = document.getElementById('closeBtn');
+  const pinBtn        = document.getElementById('pinBtn');
+  const unpinBtn      = document.getElementById('unpinBtn');
+  const compactTimerEl= document.getElementById('compactTimerEl');
+  const compactStartStop = document.getElementById('compactStartStop');
+  const compactReset  = document.getElementById('compactReset');
   const canvas        = document.getElementById('ringCanvas');
   const ctx           = canvas.getContext('2d');
 
   const W = 260, H = 260, CX = 130, CY = 130, R = 118, SW = 6;
 
   let workDur = 25*60, breakDur = 5*60, secondsLeft = workDur;
-  let isRunning = false, isWorkMode = true;
+  let isRunning = false, isWorkMode = true, isCompact = false;
   let countdown, alarmCtx, alarmInterval;
   let workSound = 'beep', breakSound = 'chime';
   let pendingWorkSound = 'beep', pendingBreakSound = 'chime';
@@ -227,7 +299,9 @@
 
   function updateDisplay() {
     const m = Math.floor(secondsLeft/60), s = secondsLeft%60;
-    timerEl.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    const str = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    timerEl.textContent = str;
+    compactTimerEl.textContent = str;
   }
 
   // ── Gear drawing helper ────────────────────────────────────────
@@ -421,7 +495,15 @@
       ding:  ()=>{tone(c,1318,'sine',0.5,t,0.05);tone(c,1568,'sine',0.4,t+0.1,0.05);tone(c,2093,'sine',0.5,t+0.2,0.6);}
     })[type]?.();
   }
+  function toggleCompact() {
+    isCompact = !isCompact;
+    document.body.classList.toggle('compact', isCompact);
+    if (isCompact) window.electronAPI?.enterCompact();
+    else           window.electronAPI?.exitCompact();
+  }
+
   function startAlarm(isBreak) {
+    if (isCompact) toggleCompact();
     stopAlarm();
     window.electronAPI?.focusWindow();
     alarmCtx=new(window.AudioContext||window.webkitAudioContext)();
@@ -442,17 +524,17 @@
 
   // ── Timer ──────────────────────────────────────────────────────
   function startTimer() {
-    clearInterval(countdown); isRunning=true; startStopBtn.textContent='Pause'; startAnimation();
+    clearInterval(countdown); isRunning=true; startStopBtn.textContent='Pause'; compactStartStop.textContent='Pause'; startAnimation();
     countdown=setInterval(()=>{
       secondsLeft--; updateDisplay();
       if(secondsLeft<=0){
-        clearInterval(countdown); isRunning=false; startStopBtn.textContent='Start';
+        clearInterval(countdown); isRunning=false; startStopBtn.textContent='Start'; compactStartStop.textContent='Start';
         stopAnimation();
         const wasWork=isWorkMode; toggleMode(); startAlarm(!wasWork);
       }
     },1000);
   }
-  function stopTimer(){clearInterval(countdown);isRunning=false;startStopBtn.textContent='Start';stopAnimation();drawFrame();}
+  function stopTimer(){clearInterval(countdown);isRunning=false;startStopBtn.textContent='Start';compactStartStop.textContent='Start';stopAnimation();drawFrame();}
   function resetTimer(){stopTimer();secondsLeft=isWorkMode?workDur:breakDur;updateDisplay();drawFrame();}
   function toggleMode(){
     isWorkMode=!isWorkMode;
@@ -482,6 +564,12 @@
   startStopBtn.addEventListener('click',()=>{stopAlarm();isRunning?stopTimer():startTimer();});
   resetBtn.addEventListener('click',()=>{stopAlarm();resetTimer();});
   dismissBtn.addEventListener('click',()=>stopAlarm());
+  minimizeBtn.addEventListener('click',()=>window.electronAPI?.winMinimize());
+  closeBtn.addEventListener('click',()=>window.electronAPI?.winClose());
+  pinBtn.addEventListener('click',()=>toggleCompact());
+  unpinBtn.addEventListener('click',()=>toggleCompact());
+  compactStartStop.addEventListener('click',()=>{stopAlarm();isRunning?stopTimer():startTimer();});
+  compactReset.addEventListener('click',()=>{stopAlarm();resetTimer();});
   workBtn.addEventListener('click',()=>{if(!isWorkMode){stopAlarm();stopTimer();toggleMode();}});
   breakBtn.addEventListener('click',()=>{if(isWorkMode){stopAlarm();stopTimer();toggleMode();}});
   function openSettings() {
