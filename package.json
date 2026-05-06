@@ -1,7 +1,7 @@
 {
-  "name": "pomodoro-timer",
-  "version": "1.0.0",
-  "description": "Pomodoro Timer",
+  "name": "pomofrog",
+  "description": "PomoFrog",
+  "author": "Ashley Lumibao",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -13,8 +13,8 @@
     "electron-builder": "^24.13.3"
   },
   "build": {
-    "appId": "com.pomodoro.timer",
-    "productName": "Pomodoro Timer",
+    "appId": "com.pomofrog",
+    "productName": "PomoFrog",
     "icon": "assets/icon.ico",
     "files": [
       "main.js",
