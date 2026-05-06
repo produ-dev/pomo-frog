@@ -1,5 +1,6 @@
 {
   "name": "pomofrog",
+  "version": "1.0.0",
   "description": "PomoFrog",
   "author": "Ashley Lumibao",
   "main": "main.js",
