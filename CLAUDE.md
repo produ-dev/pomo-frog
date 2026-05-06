@@ -10,6 +10,19 @@ npm run dist       # Build distributable (portable + NSIS installer for Windows 
 npm run create-icon  # Regenerate the app icon via create-icon.js
 ```
 
+## Commit Messages
+
+Follow the conventional commits standard: `type: short description`
+
+- `feat` — new feature
+- `fix` — bug fix
+- `chore` — maintenance (config, deps, tooling)
+- `docs` — documentation only
+- `style` — formatting, no logic change
+- `refactor` — restructure, no behavior change
+- `test` — adding/updating tests
+- `build` — build system or packaging changes
+
 ## Architecture
 
 This is a minimal Electron app with no build pipeline or frontend framework — no webpack, no TypeScript, no React.
