@@ -214,7 +214,16 @@
   let countdown, alarmCtx, alarmInterval;
   let workSound = 'beep', breakSound = 'chime';
   let pendingWorkSound = 'beep', pendingBreakSound = 'chime';
-  let tick = 0;
+  let tick = 0, rafId = null;
+
+  function startAnimation() {
+    if (rafId) return;
+    function loop() { tick++; drawFrame(); rafId = requestAnimationFrame(loop); }
+    rafId = requestAnimationFrame(loop);
+  }
+  function stopAnimation() {
+    cancelAnimationFrame(rafId); rafId = null;
+  }
 
   function updateDisplay() {
     const m = Math.floor(secondsLeft/60), s = secondsLeft%60;
@@ -289,8 +298,6 @@
     ctx.lineCap = 'round';
     ctx.stroke();
 
-    tick++;
-    requestAnimationFrame(drawFrame);
   }
 
   // ── Work: steampunk clockwork ──────────────────────────────────
@@ -435,7 +442,7 @@
 
   // ── Timer ──────────────────────────────────────────────────────
   function startTimer() {
-    clearInterval(countdown); isRunning=true; startStopBtn.textContent='Pause';
+    clearInterval(countdown); isRunning=true; startStopBtn.textContent='Pause'; startAnimation();
     countdown=setInterval(()=>{
       secondsLeft--; updateDisplay();
       if(secondsLeft<=0){
@@ -444,12 +451,13 @@
       }
     },1000);
   }
-  function stopTimer(){clearInterval(countdown);isRunning=false;startStopBtn.textContent='Start';}
-  function resetTimer(){stopTimer();secondsLeft=isWorkMode?workDur:breakDur;updateDisplay();}
+  function stopTimer(){clearInterval(countdown);isRunning=false;startStopBtn.textContent='Start';stopAnimation();drawFrame();}
+  function resetTimer(){stopTimer();secondsLeft=isWorkMode?workDur:breakDur;updateDisplay();drawFrame();}
   function toggleMode(){
     isWorkMode=!isWorkMode;
     workBtn.classList.toggle('active');breakBtn.classList.toggle('active');
     secondsLeft=isWorkMode?workDur:breakDur;updateDisplay();
+    if (!isRunning) drawFrame();
   }
 
   // ── Sound UI ───────────────────────────────────────────────────
@@ -494,7 +502,7 @@
     workDur=wm*60;breakDur=bm*60;workMinIn.value=wm;breakMinIn.value=bm;
     workSound=pendingWorkSound;breakSound=pendingBreakSound;
     stopAlarm();stopTimer();secondsLeft=isWorkMode?workDur:breakDur;
-    updateDisplay();closeSettings();
+    updateDisplay();closeSettings();drawFrame();
   });
   cancelBtn.addEventListener('click',()=>{
     workMinIn.value=Math.round(workDur/60);breakMinIn.value=Math.round(breakDur/60);
