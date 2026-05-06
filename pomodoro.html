@@ -447,6 +447,7 @@
       secondsLeft--; updateDisplay();
       if(secondsLeft<=0){
         clearInterval(countdown); isRunning=false; startStopBtn.textContent='Start';
+        stopAnimation();
         const wasWork=isWorkMode; toggleMode(); startAlarm(!wasWork);
       }
     },1000);
