@@ -1,0 +1,36 @@
+{
+  "name": "pomodoro-timer",
+  "version": "1.0.0",
+  "description": "Pomodoro Timer",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "create-icon": "node create-icon.js",
+    "dist": "electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^22.3.27",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.pomodoro.timer",
+    "productName": "Pomodoro Timer",
+    "icon": "assets/icon.ico",
+    "files": [
+      "main.js",
+      "preload.js",
+      "pomodoro.html",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        { "target": "portable", "arch": ["x64"] },
+        { "target": "nsis",     "arch": ["x64"] }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}

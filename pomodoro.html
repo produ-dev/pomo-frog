@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pomodoro Timer</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: Arial, sans-serif;
+    display: flex; justify-content: center; align-items: center;
+    min-height: 100vh; margin: 0; padding: 0;
+    background: linear-gradient(135deg, #0b1a07 0%, #1a0e03 60%, #0d0800 100%);
+    color: #e8d5a0;
+    transition: padding 0.4s ease, align-items 0.4s ease;
+  }
+  body.settings-open {
+    align-items: flex-start;
+    padding: 2rem 1rem;
+  }
+  .container {
+    text-align: center;
+    background: rgba(8, 18, 4, 0.62);
+    padding: 2rem; border-radius: 20px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.7), 0 0 60px rgba(100, 65, 10, 0.18);
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(160, 105, 30, 0.45);
+    width: 420px;
+  }
+  h1 { margin: 0 0 1rem; font-size: 1.9rem; color: #d4a84b; text-shadow: 0 0 22px rgba(180,120,30,0.55); }
+
+  .ring-wrap {
+    position: relative; width: 260px; height: 260px;
+    margin: 1rem auto;
+  }
+  #ringCanvas {
+    position: absolute; top: 0; left: 0;
+    width: 260px; height: 260px;
+  }
+  .timer {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 3.2rem; font-weight: bold;
+    font-variant-numeric: tabular-nums; letter-spacing: 3px;
+    color: #f0e0b0;
+    text-shadow: 0 0 14px rgba(200,145,40,0.85), 0 2px 8px rgba(0,0,0,0.7);
+    background: rgba(0,0,0,0.45); border-radius: 12px;
+    padding: 0.2rem 0.7rem;
+    backdrop-filter: blur(4px);
+    pointer-events: none; z-index: 2;
+    white-space: nowrap;
+  }
+
+  .btn {
+    background: rgba(140, 92, 22, 0.35); border: none;
+    padding: 0.5rem 1rem; border-radius: 5px;
+    color: #e8d5a0; font-size: 0.95rem; cursor: pointer;
+    transition: background 0.3s;
+  }
+  .btn:hover { background: rgba(180, 120, 35, 0.55); }
+  .controls { display: flex; justify-content: center; gap: 0.5rem; margin-bottom: 0.75rem; }
+  .mode-switch { margin-bottom: 0.75rem; }
+  .mode-switch button {
+    background: none; border: none; color: #e8d5a0;
+    cursor: pointer; opacity: 0.5; font-size: 1rem;
+    margin: 0 0.4rem; transition: opacity 0.3s;
+  }
+  .mode-switch button.active { opacity: 1; font-weight: bold; color: #d4a84b; }
+  .bottom-row { display: flex; justify-content: center; gap: 0.5rem; margin-top: 0.5rem; }
+  #dismissBtn {
+    display: none; margin-top: 0.75rem; width: 100%;
+    padding: 0.6rem; border: none; border-radius: 8px;
+    color: #1a0d00; font-size: 1rem; cursor: pointer; font-weight: bold;
+    animation: pulse 0.8s infinite alternate;
+  }
+  @keyframes pulse {
+    from { background: rgba(200, 140, 30, 0.7); }
+    to   { background: rgba(230, 170, 50, 0.95); }
+  }
+  .settings {
+    max-height: 0; overflow: hidden;
+    margin-top: 0; margin-bottom: 0;
+    background: rgba(5, 15, 3, 0.65);
+    border-radius: 12px; padding: 0 1rem; text-align: left;
+    opacity: 0;
+    transition: max-height 0.45s ease, opacity 0.35s ease, margin 0.35s ease, padding 0.35s ease;
+  }
+  .settings.open {
+    max-height: 800px; opacity: 1;
+    padding: 1rem;
+    margin-top: 1rem; margin-bottom: 1rem;
+  }
+  .settings h3 { margin: 0 0 0.75rem; text-align: center; font-size: 1rem; color: #d4a84b; }
+  .setting-row {
+    display: flex; align-items: center;
+    justify-content: space-between; margin-bottom: 0.6rem;
+  }
+  .setting-row label { font-size: 0.9rem; opacity: 0.9; }
+  .setting-row input[type="number"] {
+    width: 60px; padding: 0.3rem 0.4rem;
+    border-radius: 6px; border: 1px solid rgba(160, 105, 30, 0.5);
+    background: rgba(20, 10, 3, 0.5); color: #e8d5a0;
+    font-size: 0.95rem; text-align: center;
+    -moz-appearance: textfield;
+  }
+  .setting-row input[type="number"]::-webkit-outer-spin-button,
+  .setting-row input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .section-divider { border: none; border-top: 1px solid rgba(160, 105, 30, 0.3); margin: 0.75rem 0; }
+  .sound-label { font-size: 0.85rem; opacity: 0.7; margin-bottom: 0.4rem; }
+  .sound-options { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 0.5rem; }
+  .sound-option {
+    display: flex; align-items: center; justify-content: space-between;
+    background: rgba(20, 10, 3, 0.4); border-radius: 8px;
+    padding: 0.4rem 0.6rem; cursor: pointer;
+    border: 1.5px solid transparent; transition: border 0.2s, background 0.2s;
+  }
+  .sound-option.selected { border-color: rgba(200, 145, 40, 0.7); background: rgba(140, 92, 22, 0.35); }
+  .sound-option span { font-size: 0.88rem; }
+  .preview-btn {
+    background: rgba(140, 92, 22, 0.3); border: none;
+    color: #e8d5a0; border-radius: 5px; padding: 0.2rem 0.5rem;
+    font-size: 0.8rem; cursor: pointer; transition: background 0.2s;
+  }
+  .preview-btn:hover { background: rgba(180, 120, 35, 0.5); }
+  .settings-btns { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
+  .settings-apply {
+    flex: 1; padding: 0.5rem; background: rgba(160, 105, 25, 0.5); border: none;
+    border-radius: 8px; color: #f0e0b0; font-size: 0.95rem; cursor: pointer; transition: background 0.3s;
+  }
+  .settings-apply:hover { background: rgba(200, 135, 35, 0.65); }
+  .settings-cancel {
+    flex: 1; padding: 0.5rem; background: rgba(20, 10, 3, 0.4); border: none;
+    border-radius: 8px; color: #e8d5a0; font-size: 0.95rem; cursor: pointer; transition: background 0.3s;
+  }
+  .settings-cancel:hover { background: rgba(40, 20, 5, 0.6); }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: rgba(5, 15, 3, 0.5); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb { background: rgba(160, 105, 30, 0.5); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(200, 140, 45, 0.75); }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Pomodoro Timer</h1>
+  <div class="ring-wrap">
+    <canvas id="ringCanvas" width="260" height="260"></canvas>
+    <div class="timer" id="timerEl">25:00</div>
+  </div>
+  <div class="controls">
+    <button class="btn" id="startStopBtn" style="background:rgba(184,115,51,0.88);color:#1a0d00;font-weight:bold;">Start</button>
+    <button class="btn" id="resetBtn">Reset</button>
+  </div>
+  <div class="mode-switch">
+    <button id="workBtn" class="active">Work</button>
+    <button id="breakBtn">Break</button>
+  </div>
+  <div class="bottom-row">
+    <button class="btn" id="settingsBtn">⚙️ Settings</button>
+  </div>
+  <button id="dismissBtn">🔕 Dismiss Alarm</button>
+
+  <div class="settings" id="settingsPanel">
+    <h3>Settings</h3>
+    <div class="setting-row">
+      <label>Work (min)</label>
+      <input type="number" id="workMin" min="1" max="120" value="25">
+    </div>
+    <div class="setting-row">
+      <label>Break (min)</label>
+      <input type="number" id="breakMin" min="1" max="60" value="5">
+    </div>
+    <hr class="section-divider">
+    <div class="sound-label">Work alarm sound</div>
+    <div class="sound-options" id="workSounds">
+      <div class="sound-option selected" data-sound="beep"><span>⚡ Triple Beep</span><button class="preview-btn" data-sound="beep">▶ Play</button></div>
+      <div class="sound-option" data-sound="alarm"><span>🔔 Alert Tone</span><button class="preview-btn" data-sound="alarm">▶ Play</button></div>
+      <div class="sound-option" data-sound="pulse"><span>📳 Pulse</span><button class="preview-btn" data-sound="pulse">▶ Play</button></div>
+    </div>
+    <hr class="section-divider">
+    <div class="sound-label">Break alarm sound</div>
+    <div class="sound-options" id="breakSounds">
+      <div class="sound-option selected" data-sound="chime"><span>🎵 Gentle Chime</span><button class="preview-btn" data-sound="chime">▶ Play</button></div>
+      <div class="sound-option" data-sound="bells"><span>🔔 Soft Bells</span><button class="preview-btn" data-sound="bells">▶ Play</button></div>
+      <div class="sound-option" data-sound="ding"><span>✨ Upbeat Ding</span><button class="preview-btn" data-sound="ding">▶ Play</button></div>
+    </div>
+    <div class="settings-btns">
+      <button class="settings-apply" id="applyBtn">Apply</button>
+      <button class="settings-cancel" id="cancelBtn">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const timerEl       = document.getElementById('timerEl');
+  const startStopBtn  = document.getElementById('startStopBtn');
+  const resetBtn      = document.getElementById('resetBtn');
+  const workBtn       = document.getElementById('workBtn');
+  const breakBtn      = document.getElementById('breakBtn');
+  const settingsBtn   = document.getElementById('settingsBtn');
+  const dismissBtn    = document.getElementById('dismissBtn');
+  const settingsPanel = document.getElementById('settingsPanel');
+  const workMinIn     = document.getElementById('workMin');
+  const breakMinIn    = document.getElementById('breakMin');
+  const applyBtn      = document.getElementById('applyBtn');
+  const cancelBtn     = document.getElementById('cancelBtn');
+  const canvas        = document.getElementById('ringCanvas');
+  const ctx           = canvas.getContext('2d');
+
+  const W = 260, H = 260, CX = 130, CY = 130, R = 118, SW = 6;
+
+  let workDur = 25*60, breakDur = 5*60, secondsLeft = workDur;
+  let isRunning = false, isWorkMode = true;
+  let countdown, alarmCtx, alarmInterval;
+  let workSound = 'beep', breakSound = 'chime';
+  let pendingWorkSound = 'beep', pendingBreakSound = 'chime';
+  let tick = 0;
+
+  function updateDisplay() {
+    const m = Math.floor(secondsLeft/60), s = secondsLeft%60;
+    timerEl.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  }
+
+  // ── Gear drawing helper ────────────────────────────────────────
+  function drawGear(gcx, gcy, r, teeth, angle, strokeCol, alpha) {
+    const toothH = r * 0.2, innerR = r - toothH;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = strokeCol;
+    ctx.lineWidth = 1.3;
+    ctx.beginPath();
+    for (let i = 0; i < teeth; i++) {
+      const base = (i / teeth) * Math.PI * 2 + angle;
+      const a1 = base,
+            a2 = base + (0.3 / teeth) * Math.PI * 2,
+            a3 = base + (0.7 / teeth) * Math.PI * 2,
+            a4 = base + (1.0 / teeth) * Math.PI * 2;
+      if (i === 0) ctx.moveTo(gcx + Math.cos(a1)*innerR, gcy + Math.sin(a1)*innerR);
+      else         ctx.lineTo(gcx + Math.cos(a1)*innerR, gcy + Math.sin(a1)*innerR);
+      ctx.lineTo(gcx + Math.cos(a2)*r,     gcy + Math.sin(a2)*r);
+      ctx.lineTo(gcx + Math.cos(a3)*r,     gcy + Math.sin(a3)*r);
+      ctx.lineTo(gcx + Math.cos(a4)*innerR, gcy + Math.sin(a4)*innerR);
+    }
+    ctx.closePath();
+    ctx.stroke();
+    // Hub
+    ctx.beginPath();
+    ctx.arc(gcx, gcy, r * 0.22, 0, Math.PI*2);
+    ctx.stroke();
+    // Spokes
+    const spokes = Math.min(6, Math.max(3, Math.floor(teeth / 3)));
+    for (let i = 0; i < spokes; i++) {
+      const a = angle + (i / spokes) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.moveTo(gcx + Math.cos(a)*r*0.22, gcy + Math.sin(a)*r*0.22);
+      ctx.lineTo(gcx + Math.cos(a)*innerR*0.88, gcy + Math.sin(a)*innerR*0.88);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // ── Draw everything on one canvas ─────────────────────────────
+  function drawFrame() {
+    ctx.clearRect(0, 0, W, H);
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(CX, CY, R - SW/2, 0, Math.PI*2);
+    ctx.clip();
+
+    isWorkMode ? drawWork() : drawBreak();
+
+    ctx.restore();
+
+    // Background ring
+    ctx.beginPath();
+    ctx.arc(CX, CY, R, -Math.PI/2, Math.PI*2 - Math.PI/2);
+    ctx.strokeStyle = 'rgba(150, 95, 20, 0.25)';
+    ctx.lineWidth = SW;
+    ctx.stroke();
+
+    // Progress arc — copper
+    const total = isWorkMode ? workDur : breakDur;
+    const progress = 1 - secondsLeft / total;
+    ctx.beginPath();
+    ctx.arc(CX, CY, R, -Math.PI/2, -Math.PI/2 + progress * Math.PI*2);
+    ctx.strokeStyle = '#c8922a';
+    ctx.lineWidth = SW;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+
+    tick++;
+    requestAnimationFrame(drawFrame);
+  }
+
+  // ── Work: steampunk clockwork ──────────────────────────────────
+  function drawWork() {
+    // Dark sepia background
+    ctx.fillStyle = 'rgba(18, 9, 2, 0.9)';
+    ctx.fillRect(0, 0, W, H);
+
+    // Moving grid (warm amber tint)
+    ctx.strokeStyle = 'rgba(180, 120, 30, 0.1)';
+    ctx.lineWidth = 0.8;
+    const sp = 20, off = (tick * 0.3) % sp;
+    for (let x = -sp+off; x < W+sp; x += sp) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+    for (let y = -sp+off; y < H+sp; y += sp) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+
+    // Gears: large bg, medium, small — ratios based on tooth count
+    drawGear(CX - 22, CY + 18, 62, 16, tick * 0.006,          '#b87333', 0.28);
+    drawGear(CX + 52, CY - 28, 32, 10, tick * -0.0096,         '#a0652a', 0.45);
+    drawGear(CX + 20, CY + 62, 18,  6, tick *  0.016,          '#c8902a', 0.4);
+
+    // Central furnace glow
+    const flicker = Math.sin(tick * 0.13) * 0.06;
+    const glow = ctx.createRadialGradient(CX, CY, 0, CX, CY, 38);
+    glow.addColorStop(0,   `rgba(255, 200, 80, ${0.32 + flicker})`);
+    glow.addColorStop(0.45,`rgba(200, 120, 25, ${0.18 + flicker})`);
+    glow.addColorStop(1,   'transparent');
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(CX, CY, 38, 0, Math.PI*2);
+    ctx.fill();
+
+    // Steam wisps rising from center-bottom
+    for (let i = 0; i < 6; i++) {
+      const age   = (tick * 0.7 + i * 23) % 72;
+      const t     = age / 72;
+      const alpha = t < 0.3 ? (t/0.3)*0.1 : (1-t)*0.1;
+      const sx    = CX - 12 + (i % 3) * 13 + Math.sin(tick*0.04 + i)*5;
+      const sy    = CY + 28 - age * 1.7;
+      const sr    = 5 + age * 0.22;
+      const wg    = ctx.createRadialGradient(sx, sy, 0, sx, sy, sr);
+      wg.addColorStop(0, `rgba(210, 185, 140, ${alpha * 2.2})`);
+      wg.addColorStop(1, 'transparent');
+      ctx.fillStyle = wg;
+      ctx.beginPath();
+      ctx.arc(sx, sy, sr, 0, Math.PI*2);
+      ctx.fill();
+    }
+  }
+
+  // ── Break: forest with fireflies ───────────────────────────────
+  function drawBreak() {
+    // Dark forest green background
+    ctx.fillStyle = 'rgba(3, 17, 7, 0.9)';
+    ctx.fillRect(0, 0, W, H);
+
+    // Subtle fog layer at bottom
+    const fog = ctx.createLinearGradient(0, H*0.6, 0, H);
+    fog.addColorStop(0, 'transparent');
+    fog.addColorStop(1, 'rgba(20, 50, 20, 0.25)');
+    ctx.fillStyle = fog;
+    ctx.fillRect(0, H*0.6, W, H*0.4);
+
+    // Fireflies
+    for (let i = 0; i < 11; i++) {
+      const sp  = 0.28 + (i % 5) * 0.11;
+      const fx  = CX + Math.sin(tick*0.017*sp + i*1.73) * 76;
+      const fy  = CY + Math.cos(tick*0.013*sp + i*2.41) * 64;
+      const pulse = 0.45 + Math.sin(tick*0.09 + i*1.07) * 0.45;
+      const fg  = ctx.createRadialGradient(fx, fy, 0, fx, fy, 9);
+      fg.addColorStop(0, `rgba(185, 255, 100, ${0.65 * pulse})`);
+      fg.addColorStop(1, 'transparent');
+      ctx.fillStyle = fg;
+      ctx.beginPath(); ctx.arc(fx, fy, 9, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = `rgba(230, 255, 175, ${pulse})`;
+      ctx.beginPath(); ctx.arc(fx, fy, 1.6, 0, Math.PI*2); ctx.fill();
+    }
+
+    // Drifting spores / pollen
+    for (let i = 0; i < 9; i++) {
+      const sp  = 0.35 + (i % 4) * 0.14;
+      const px  = (CX - 85 + (i * 49) % 170) + Math.sin(tick*0.02 + i)*10;
+      const py  = ((tick*sp*0.45 + i*33) % (H + 20)) - 10;
+      const a   = 0.12 + Math.sin(tick*0.04 + i)*0.08;
+      ctx.fillStyle = `rgba(140, 215, 90, ${a})`;
+      ctx.beginPath(); ctx.arc(px, py, 1.4, 0, Math.PI*2); ctx.fill();
+    }
+
+    // Central ambient glow
+    const glow = ctx.createRadialGradient(CX, CY, 0, CX, CY, 52);
+    glow.addColorStop(0,   'rgba(140, 230, 100, 0.18)');
+    glow.addColorStop(0.5, 'rgba(80,  180, 60,  0.08)');
+    glow.addColorStop(1,   'transparent');
+    ctx.fillStyle = glow;
+    ctx.beginPath(); ctx.arc(CX, CY, 52, 0, Math.PI*2); ctx.fill();
+
+    // Twinkling stars
+    [[18,16],[212,22],[42,72],[208,82],[68,202],[192,197],[28,158],[215,155]].forEach(([sx,sy],i) => {
+      const alpha = 0.35 + Math.sin(tick*0.05 + i)*0.3;
+      ctx.fillStyle = `rgba(190, 245, 180, ${alpha})`;
+      ctx.beginPath(); ctx.arc(sx, sy, 1.1, 0, Math.PI*2); ctx.fill();
+    });
+  }
+
+  // ── Sound ──────────────────────────────────────────────────────
+  function tone(c,freq,type,vol,start,dur) {
+    const o=c.createOscillator(),g=c.createGain();
+    o.connect(g); g.connect(c.destination);
+    o.type=type; o.frequency.setValueAtTime(freq,start);
+    g.gain.setValueAtTime(vol,start);
+    g.gain.exponentialRampToValueAtTime(0.001,start+dur);
+    o.start(start); o.stop(start+dur+0.05);
+  }
+  function playSound(type,c) {
+    const t=c.currentTime;
+    ({
+      beep:  ()=>[0,0.3,0.6].forEach(d=>tone(c,880,'sine',0.6,t+d,0.4)),
+      alarm: ()=>[0,0.25,0.5,0.75].forEach(d=>tone(c,d%0.5===0?1000:700,'square',0.3,t+d,0.22)),
+      pulse: ()=>{for(let i=0;i<5;i++)tone(c,660,'sawtooth',0.25,t+i*0.18,0.12);},
+      chime: ()=>[[523.25,0],[659.25,0.2],[783.99,0.4],[1046.5,0.65]].forEach(([f,d])=>tone(c,f,'sine',0.35,t+d,0.6)),
+      bells: ()=>[[880,0],[1108,0.25],[1320,0.5]].forEach(([f,d])=>{tone(c,f,'sine',0.3,t+d,0.8);tone(c,f*2,'sine',0.1,t+d,0.8);}),
+      ding:  ()=>{tone(c,1318,'sine',0.5,t,0.05);tone(c,1568,'sine',0.4,t+0.1,0.05);tone(c,2093,'sine',0.5,t+0.2,0.6);}
+    })[type]?.();
+  }
+  function startAlarm(isBreak) {
+    stopAlarm();
+    window.electronAPI?.focusWindow();
+    alarmCtx=new(window.AudioContext||window.webkitAudioContext)();
+    const snd=isBreak?breakSound:workSound;
+    playSound(snd,alarmCtx);
+    alarmInterval=setInterval(()=>playSound(snd,alarmCtx),2000);
+    dismissBtn.style.display='block';
+  }
+  function stopAlarm() {
+    clearInterval(alarmInterval); alarmInterval=null;
+    if(alarmCtx){alarmCtx.close();alarmCtx=null;}
+    dismissBtn.style.display='none';
+  }
+  function previewSound(type) {
+    const c=new(window.AudioContext||window.webkitAudioContext)();
+    playSound(type,c); setTimeout(()=>c.close(),3000);
+  }
+
+  // ── Timer ──────────────────────────────────────────────────────
+  function startTimer() {
+    clearInterval(countdown); isRunning=true; startStopBtn.textContent='Pause';
+    countdown=setInterval(()=>{
+      secondsLeft--; updateDisplay();
+      if(secondsLeft<=0){
+        clearInterval(countdown); isRunning=false; startStopBtn.textContent='Start';
+        const wasWork=isWorkMode; toggleMode(); startAlarm(!wasWork);
+      }
+    },1000);
+  }
+  function stopTimer(){clearInterval(countdown);isRunning=false;startStopBtn.textContent='Start';}
+  function resetTimer(){stopTimer();secondsLeft=isWorkMode?workDur:breakDur;updateDisplay();}
+  function toggleMode(){
+    isWorkMode=!isWorkMode;
+    workBtn.classList.toggle('active');breakBtn.classList.toggle('active');
+    secondsLeft=isWorkMode?workDur:breakDur;updateDisplay();
+  }
+
+  // ── Sound UI ───────────────────────────────────────────────────
+  function selectSound(group,sound){
+    document.querySelectorAll(`#${group}Sounds .sound-option`).forEach(el=>
+      el.classList.toggle('selected',el.dataset.sound===sound));
+    if(group==='work')pendingWorkSound=sound;else pendingBreakSound=sound;
+  }
+  document.querySelectorAll('.sound-option').forEach(el=>{
+    el.addEventListener('click',e=>{
+      if(e.target.classList.contains('preview-btn'))return;
+      const group=el.closest('.sound-options').id==='workSounds'?'work':'break';
+      selectSound(group,el.dataset.sound);
+    });
+  });
+  document.querySelectorAll('.preview-btn').forEach(btn=>{
+    btn.addEventListener('click',e=>{e.stopPropagation();previewSound(btn.dataset.sound);});
+  });
+
+  // ── Controls ───────────────────────────────────────────────────
+  startStopBtn.addEventListener('click',()=>{stopAlarm();isRunning?stopTimer():startTimer();});
+  resetBtn.addEventListener('click',()=>{stopAlarm();resetTimer();});
+  dismissBtn.addEventListener('click',()=>stopAlarm());
+  workBtn.addEventListener('click',()=>{if(!isWorkMode){stopAlarm();stopTimer();toggleMode();}});
+  breakBtn.addEventListener('click',()=>{if(isWorkMode){stopAlarm();stopTimer();toggleMode();}});
+  function openSettings() {
+    pendingWorkSound=workSound;pendingBreakSound=breakSound;
+    selectSound('work',workSound);selectSound('break',breakSound);
+    settingsPanel.classList.add('open');
+    document.body.classList.add('settings-open');
+  }
+  function closeSettings() {
+    settingsPanel.classList.remove('open');
+    document.body.classList.remove('settings-open');
+  }
+  settingsBtn.addEventListener('click',()=>{
+    settingsPanel.classList.contains('open') ? closeSettings() : openSettings();
+  });
+  applyBtn.addEventListener('click',()=>{
+    const wm=Math.max(1,Math.min(120,parseInt(workMinIn.value)||25));
+    const bm=Math.max(1,Math.min(60,parseInt(breakMinIn.value)||5));
+    workDur=wm*60;breakDur=bm*60;workMinIn.value=wm;breakMinIn.value=bm;
+    workSound=pendingWorkSound;breakSound=pendingBreakSound;
+    stopAlarm();stopTimer();secondsLeft=isWorkMode?workDur:breakDur;
+    updateDisplay();closeSettings();
+  });
+  cancelBtn.addEventListener('click',()=>{
+    workMinIn.value=Math.round(workDur/60);breakMinIn.value=Math.round(breakDur/60);
+    closeSettings();
+  });
+
+  updateDisplay();
+  drawFrame();
+</script>
+</body>
+</html>
