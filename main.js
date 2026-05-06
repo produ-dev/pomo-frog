@@ -49,7 +49,7 @@ app.whenReady().then(() => {
     if (!win) return;
     const { width } = screen.getPrimaryDisplay().workAreaSize;
     const margin = 28;
-    const compactW = 240, compactH = 110;
+    const compactW = 200, compactH = 110;
     win.setAlwaysOnTop(true);
     win.setContentSize(compactW, compactH);
     win.setPosition(width - compactW - margin, margin);
