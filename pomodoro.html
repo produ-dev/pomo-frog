@@ -536,14 +536,17 @@
   }
 
   function startAlarm(isBreak) {
-    if (isCompact) toggleCompact();
     stopAlarm();
-    window.electronAPI?.focusWindow();
-    alarmCtx=new(window.AudioContext||window.webkitAudioContext)();
-    const snd=isBreak?breakSound:workSound;
-    playSound(snd,alarmCtx);
-    alarmInterval=setInterval(()=>playSound(snd,alarmCtx),2000);
-    dismissBtn.style.display='block';
+    const proceed = () => {
+      window.electronAPI?.focusWindow();
+      alarmCtx=new(window.AudioContext||window.webkitAudioContext)();
+      const snd=isBreak?breakSound:workSound;
+      playSound(snd,alarmCtx);
+      alarmInterval=setInterval(()=>playSound(snd,alarmCtx),2000);
+      dismissBtn.style.display='block';
+    };
+    if (isCompact) { toggleCompact(); setTimeout(proceed, 250); }
+    else proceed();
   }
   function stopAlarm() {
     clearInterval(alarmInterval); alarmInterval=null;
