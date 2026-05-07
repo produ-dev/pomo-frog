@@ -50,6 +50,7 @@ app.whenReady().then(() => {
     const { width } = screen.getPrimaryDisplay().workAreaSize;
     const margin = 28;
     const compactW = 200, compactH = 110;
+    win.setMinimizable(false);
     win.setAlwaysOnTop(true);
     win.setContentSize(compactW, compactH);
     win.setPosition(width - compactW - margin, margin);
@@ -60,6 +61,7 @@ app.whenReady().then(() => {
     if (!win) return;
     const { width, height } = screen.getPrimaryDisplay().workAreaSize;
     const normalW = 520, normalH = 652;
+    win.setMinimizable(true);
     win.setAlwaysOnTop(false);
     win.setContentSize(normalW, normalH);
     win.setPosition(
