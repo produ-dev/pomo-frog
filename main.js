@@ -51,7 +51,7 @@ app.whenReady().then(() => {
     const margin = 28;
     const compactW = 200, compactH = 110;
     win.setMinimizable(false);
-    win.setAlwaysOnTop(true);
+    win.setAlwaysOnTop(true, 'screen-saver');
     win.setContentSize(compactW, compactH);
     win.setPosition(width - compactW - margin, margin);
   });
