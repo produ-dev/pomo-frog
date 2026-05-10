@@ -312,7 +312,10 @@
 
   function startAnimation() {
     if (rafId) return;
-    function loop() { tick++; drawFrame(); rafId = requestAnimationFrame(loop); }
+    function loop() {
+      if (!document.hidden) { tick++; drawFrame(); }
+      rafId = requestAnimationFrame(loop);
+    }
     rafId = requestAnimationFrame(loop);
   }
   function stopAnimation() {
