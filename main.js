@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, screen, powerSaveBlocker } = require('electron');
 const path = require('path');
 
 function createWindow() {
@@ -12,6 +12,7 @@ function createWindow() {
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
+      backgroundThrottling: false,
       preload: path.join(__dirname, 'preload.js')
     }
   });
@@ -19,6 +20,8 @@ function createWindow() {
   win.loadFile('pomodoro.html');
   win.setMenuBarVisibility(false);
 }
+
+let powerSaveId = null;
 
 app.whenReady().then(() => {
   createWindow();
@@ -31,6 +34,14 @@ app.whenReady().then(() => {
   ipcMain.on('win-close', () => {
     const win = BrowserWindow.getAllWindows()[0];
     if (win) win.close();
+  });
+
+  ipcMain.on('timer-start', () => {
+    if (powerSaveId === null) powerSaveId = powerSaveBlocker.start('prevent-app-suspension');
+  });
+
+  ipcMain.on('timer-stop', () => {
+    if (powerSaveId !== null) { powerSaveBlocker.stop(powerSaveId); powerSaveId = null; }
   });
 
   ipcMain.on('focus-window', () => {
